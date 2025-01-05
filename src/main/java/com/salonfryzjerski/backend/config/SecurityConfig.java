@@ -24,9 +24,11 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/services/**").permitAll()
+                        .requestMatchers("/api/reservations/**").permitAll()
                         .anyRequest().authenticated())
                 .formLogin(login -> login.defaultSuccessUrl("/").permitAll())
                 .logout(logout -> logout.permitAll());
+
 
         return http.build();
     }

@@ -19,7 +19,7 @@ public class SalonService {
     private String name;
 
     @Column(nullable = false)
-    private int duration; // w minutach
+    private int duration;
 
     @Column(nullable = false)
     private double price;

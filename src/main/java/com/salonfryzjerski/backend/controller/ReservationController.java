@@ -1,47 +1,59 @@
 package com.salonfryzjerski.backend.controller;
 
 import com.salonfryzjerski.backend.model.Reservation;
-import com.salonfryzjerski.backend.repository.ReservationRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.salonfryzjerski.backend.service.ReservationService;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/reservations")
 public class ReservationController {
 
-    @Autowired
-    private ReservationRepository reservationRepository;
+    private final ReservationService reservationService;
 
-    @GetMapping
-    public List<Reservation> getAllReservations() {
-        return reservationRepository.findAll();
+    public ReservationController(ReservationService reservationService) {
+        this.reservationService = reservationService;
+    }
+
+    @GetMapping("/calendar")
+    public Map<String, List<Map<String, String>>> getReservationsByDay() {
+        List<Reservation> reservations = reservationService.getAllReservations();
+
+        Map<LocalDate, List<Reservation>> groupedReservations = reservations.stream()
+                .collect(Collectors.groupingBy(Reservation::getDate));
+
+        Map<String, List<Map<String, String>>> calendarView = new TreeMap<>();
+        groupedReservations.forEach((date, dailyReservations) -> {
+            List<Map<String, String>> dailyView = dailyReservations.stream()
+                    .map(reservation -> {
+                        Map<String, String> map = new HashMap<>();
+                        map.put("startTime", reservation.getStartTime().toString());
+                        map.put("endTime", reservation.getEndTime().toString());
+                        map.put("serviceName", reservation.getService().getName());
+                        map.put("customerName", reservation.getCustomerName());
+                        return map;
+                    })
+                    .collect(Collectors.toList());
+
+            calendarView.put(date.toString(), dailyView);
+        });
+
+        return calendarView;
     }
 
     @PostMapping
-    public ResponseEntity<Reservation> createReservation(@RequestBody Reservation reservation) {
-        Reservation savedReservation = reservationRepository.save(reservation);
-        return new ResponseEntity<>(savedReservation, HttpStatus.CREATED);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<Reservation> updateReservation(@PathVariable Long id, @RequestBody Reservation reservationDetails) {
-        return reservationRepository.findById(id).map(reservation -> {
-            reservation.setDateTime(reservationDetails.getDateTime());
-            reservation.setStatus(reservationDetails.getStatus());
-            Reservation updated = reservationRepository.save(reservation);
-            return new ResponseEntity<>(updated, HttpStatus.OK);
-        }).orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteReservation(@PathVariable Long id) {
-        return reservationRepository.findById(id).map(reservation -> {
-            reservationRepository.delete(reservation);
-            return new ResponseEntity<Void>(HttpStatus.NO_CONTENT);
-        }).orElseGet(() -> ResponseEntity.notFound().build());
+    public ResponseEntity<Reservation> addReservation(@RequestBody Reservation reservation) {
+        Reservation savedReservation = reservationService.addReservation(reservation);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedReservation);
     }
 }

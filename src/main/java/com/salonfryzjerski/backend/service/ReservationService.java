@@ -1,35 +1,41 @@
 package com.salonfryzjerski.backend.service;
 
-import com.salonfryzjerski.backend.model.Reservation;
-import com.salonfryzjerski.backend.repository.ReservationRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import com.salonfryzjerski.backend.model.Reservation;
+import com.salonfryzjerski.backend.repository.ReservationRepository;
 
 @Service
 public class ReservationService {
 
-    @Autowired
-    private ReservationRepository reservationRepository;
+    private final ReservationRepository reservationRepository;
+
+    public ReservationService(ReservationRepository reservationRepository) {
+        this.reservationRepository = reservationRepository;
+    }
 
     public List<Reservation> getAllReservations() {
         return reservationRepository.findAll();
     }
 
-    public Reservation createReservation(Reservation reservation) {
+    public Reservation addReservation(Reservation reservation) {
+        List<Reservation> existingReservations = reservationRepository.findAll();
+
+        boolean isTimeSlotTaken = existingReservations.stream()
+                .anyMatch(existing -> existing.getDate().equals(reservation.getDate()) &&
+                        ((reservation.getStartTime().isBefore(existing.getEndTime())
+                                && reservation.getStartTime().isAfter(existing.getStartTime())) ||
+                                (reservation.getEndTime().isAfter(existing.getStartTime())
+                                        && reservation.getEndTime().isBefore(existing.getEndTime()))
+                                ||
+                                (reservation.getStartTime().equals(existing.getStartTime()))));
+
+        if (isTimeSlotTaken) {
+            throw new RuntimeException("The selected time slot is already booked!");
+        }
         return reservationRepository.save(reservation);
     }
 
-    public Reservation updateReservation(Long id, Reservation reservationDetails) {
-        return reservationRepository.findById(id).map(reservation -> {
-            reservation.setDateTime(reservationDetails.getDateTime());
-            reservation.setStatus(reservationDetails.getStatus());
-            return reservationRepository.save(reservation);
-        }).orElseThrow(() -> new RuntimeException("Reservation not found"));
-    }
-
-    public void deleteReservation(Long id) {
-        reservationRepository.findById(id).ifPresent(reservation -> reservationRepository.delete(reservation));
-    }
 }
