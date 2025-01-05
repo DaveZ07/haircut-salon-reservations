@@ -21,12 +21,12 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable()) // Wyłączenie CSRF
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/services/**").permitAll() // Endpointy publiczne
-                        .anyRequest().authenticated()) // Reszta wymaga logowania
-                .formLogin(login -> login.defaultSuccessUrl("/").permitAll()) // Formularz logowania
-                .logout(logout -> logout.permitAll()); // Wylogowanie dostępne dla każdego
+                        .requestMatchers("/api/services/**").permitAll()
+                        .anyRequest().authenticated())
+                .formLogin(login -> login.defaultSuccessUrl("/").permitAll())
+                .logout(logout -> logout.permitAll());
 
         return http.build();
     }
