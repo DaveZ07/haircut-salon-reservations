@@ -109,12 +109,17 @@ public class SecurityConfig {
             "X-Requested-With", 
             "Accept", 
             "Origin", 
+            "Access-Control-Allow-Origin",
+            "Access-Control-Allow-Headers",
             "Access-Control-Request-Method", 
-            "Access-Control-Request-Headers"
+            "Access-Control-Request-Headers",
+            "Access-Control-Allow-Credentials"
         ));
         configuration.setExposedHeaders(Arrays.asList(
+            "Authorization",
             "Access-Control-Allow-Origin", 
-            "Access-Control-Allow-Credentials"
+            "Access-Control-Allow-Credentials",
+            "Access-Control-Allow-Headers"
         ));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
