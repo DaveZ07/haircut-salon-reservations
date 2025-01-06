@@ -58,6 +58,7 @@ public class SecurityConfig {
                 logger.debug("CSRF disabled");
             })
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/auth/**").permitAll()  // nowy endpoint dla autoryzacji
                 .requestMatchers("/api/services/**").permitAll()
                 .requestMatchers("/api/reservations/**").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
@@ -68,6 +69,24 @@ public class SecurityConfig {
                     response.sendError(HttpStatus.FORBIDDEN.value())))
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .formLogin(form -> form
+                .loginProcessingUrl("/api/auth/login")
+                .successHandler((request, response, authentication) -> {
+                    response.setStatus(HttpStatus.OK.value());
+                    response.getWriter().write("{\"message\": \"Zalogowano pomyślnie\"}");
+                })
+                .failureHandler((request, response, exception) -> {
+                    response.setStatus(HttpStatus.UNAUTHORIZED.value());
+                    response.getWriter().write("{\"error\": \"Nieprawidłowe dane logowania\"}");
+                })
+            )
+            .logout(logout -> logout
+                .logoutUrl("/api/auth/logout")
+                .logoutSuccessHandler((request, response, authentication) -> {
+                    response.setStatus(HttpStatus.OK.value());
+                    response.getWriter().write("{\"message\": \"Wylogowano pomyślnie\"}");
+                })
+            )
             .httpBasic(Customizer.withDefaults());
 
         logger.info("SecurityFilterChain configured successfully");
