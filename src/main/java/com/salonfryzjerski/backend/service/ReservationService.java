@@ -38,4 +38,22 @@ public class ReservationService {
         return reservationRepository.save(reservation);
     }
 
+    public Reservation updateReservation(Long id, Reservation updatedReservation) {
+        return reservationRepository.findById(id).map(existingReservation -> {
+            existingReservation.setDate(updatedReservation.getDate());
+            existingReservation.setStartTime(updatedReservation.getStartTime());
+            existingReservation.setEndTime(updatedReservation.getEndTime());
+            existingReservation.setCustomerName(updatedReservation.getCustomerName());
+            existingReservation.setService(updatedReservation.getService());
+            return reservationRepository.save(existingReservation);
+        }).orElseThrow(() -> new RuntimeException("Reservation with ID " + id + " not found"));
+    }
+
+    public void deleteReservation(Long id) {
+        if (!reservationRepository.existsById(id)) {
+            throw new RuntimeException("Reservation with ID " + id + " not found");
+        }
+        reservationRepository.deleteById(id);
+    }
+
 }
