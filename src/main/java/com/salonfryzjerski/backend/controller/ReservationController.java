@@ -21,8 +21,15 @@ import org.springframework.web.bind.annotation.RestController;
 import com.salonfryzjerski.backend.model.Reservation;
 import com.salonfryzjerski.backend.service.ReservationService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 @RestController
 @RequestMapping("/api/reservations")
+@Tag(name = "Rezerwacje", description = "Zarządzanie rezerwacjami w systemie")
 public class ReservationController {
 
     private final ReservationService reservationService;
@@ -31,6 +38,12 @@ public class ReservationController {
         this.reservationService = reservationService;
     }
 
+    @Operation(summary = "Pobierz kalendarz rezerwacji", 
+            description = "Zwraca wszystkie rezerwacje pogrupowane według dat")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Pomyślnie pobrano kalendarz rezerwacji"),
+        @ApiResponse(responseCode = "401", description = "Brak autoryzacji")
+    })
     @GetMapping("/calendar")
     public Map<String, List<Map<String, String>>> getReservationsByDay() {
         List<Reservation> reservations = reservationService.getAllReservations();
@@ -57,22 +70,50 @@ public class ReservationController {
         return calendarView;
     }
 
+    @Operation(summary = "Dodaj nową rezerwację", 
+            description = "Tworzy nową rezerwację w systemie")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "201", description = "Rezerwacja została utworzona"),
+        @ApiResponse(responseCode = "400", description = "Nieprawidłowe dane rezerwacji"),
+        @ApiResponse(responseCode = "401", description = "Brak autoryzacji")
+    })
     @PostMapping
-    public ResponseEntity<Reservation> addReservation(@RequestBody Reservation reservation) {
+    public ResponseEntity<Reservation> addReservation(
+            @Parameter(description = "Dane nowej rezerwacji") 
+            @RequestBody Reservation reservation) {
         Reservation savedReservation = reservationService.addReservation(reservation);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedReservation);
     }
 
+    @Operation(summary = "Aktualizuj rezerwację", 
+            description = "Aktualizuje istniejącą rezerwację na podstawie ID")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Rezerwacja została zaktualizowana"),
+        @ApiResponse(responseCode = "400", description = "Nieprawidłowe dane rezerwacji"),
+        @ApiResponse(responseCode = "401", description = "Brak autoryzacji"),
+        @ApiResponse(responseCode = "404", description = "Nie znaleziono rezerwacji")
+    })
     @PutMapping("/{id}")
     public ResponseEntity<Reservation> updateReservation(
+            @Parameter(description = "ID rezerwacji do aktualizacji") 
             @PathVariable Long id,
+            @Parameter(description = "Zaktualizowane dane rezerwacji") 
             @RequestBody Reservation updatedReservation) {
         Reservation reservation = reservationService.updateReservation(id, updatedReservation);
         return ResponseEntity.ok(reservation);
     }
 
+    @Operation(summary = "Usuń rezerwację", 
+            description = "Usuwa rezerwację o podanym ID")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Rezerwacja została usunięta"),
+        @ApiResponse(responseCode = "401", description = "Brak autoryzacji"),
+        @ApiResponse(responseCode = "404", description = "Nie znaleziono rezerwacji")
+    })
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteReservation(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteReservation(
+            @Parameter(description = "ID rezerwacji do usunięcia") 
+            @PathVariable Long id) {
         reservationService.deleteReservation(id);
         return ResponseEntity.ok().build();
     }
