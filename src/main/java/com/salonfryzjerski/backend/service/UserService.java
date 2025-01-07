@@ -1,12 +1,13 @@
 package com.salonfryzjerski.backend.service;
 
-import com.salonfryzjerski.backend.model.User;
-import com.salonfryzjerski.backend.repository.UserRepository;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Optional;
+import com.salonfryzjerski.backend.model.User;
+import com.salonfryzjerski.backend.repository.UserRepository;
 
 @Service
 public class UserService {
@@ -25,6 +26,12 @@ public class UserService {
     public User createUser(User user) {
         return userRepository.save(user);
     }
+    public boolean existsByUsername(String username) {
+        return userRepository.existsByUsername(username);
+    }
+    public boolean existsByEmail(String email) {
+        return userRepository.existsByEmail(email);
+    }
 
     public User updateUser(Long id, User userDetails) {
         return userRepository.findById(id).map(user -> {
@@ -38,4 +45,6 @@ public class UserService {
     public void deleteUser(Long id) {
         userRepository.findById(id).ifPresent(user -> userRepository.delete(user));
     }
+
+
 }

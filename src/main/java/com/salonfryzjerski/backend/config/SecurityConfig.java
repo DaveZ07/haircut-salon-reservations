@@ -1,100 +1,62 @@
 package com.salonfryzjerski.backend.config;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.config.Customizer;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import com.salonfryzjerski.backend.service.CustomUserDetailsService;
+import com.salonfryzjerski.backend.filter.JwtAuthenticationFilter;
+import com.salonfryzjerski.backend.security.JwtUtil;
 
 @Configuration
 public class SecurityConfig {
 
-    private static final Logger logger = LogManager.getLogger(SecurityConfig.class);
-    private final CustomUserDetailsService customUserDetailsService;
+    @Bean
+    public JwtAuthenticationFilter jwtAuthenticationFilter() {
+        return new JwtAuthenticationFilter(jwtUtil, userDetailsService);
+    }
 
-    public SecurityConfig(CustomUserDetailsService customUserDetailsService) {
-        try {
-            Path logPath = Paths.get(System.getProperty("user.dir"), "logs");
-            Files.createDirectories(logPath);
-            logger.info("Próba utworzenia katalogu logs w: {}", logPath.toAbsolutePath());
-            
-            if (Files.exists(logPath)) {
-                logger.info("Katalog logs został utworzony pomyślnie");
-                Path testFile = logPath.resolve("test.log");
-                Files.writeString(testFile, "Test zapisu");
-                logger.info("Utworzono plik testowy: {}", testFile.toAbsolutePath());
-                
-                logger.debug("Test debug message");
-                logger.info("Test info message");
-                logger.warn("Test warning message");
-                logger.error("Test error message");
-            }
-        } catch (Exception e) {
-            logger.error("Błąd podczas tworzenia katalogu logs: ", e);
-        }
-        this.customUserDetailsService = customUserDetailsService;
+    private static final Logger logger = LogManager.getLogger(SecurityConfig.class);
+    private final JwtUtil jwtUtil;
+    private final UserDetailsService userDetailsService;
+
+    public SecurityConfig(JwtUtil jwtUtil,
+                        UserDetailsService userDetailsService) {
+        this.jwtUtil = jwtUtil;
+        this.userDetailsService = userDetailsService;
         logger.info("SecurityConfig initialized");
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        logger.debug("Configuring SecurityFilterChain");
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .csrf(csrf -> {
-                csrf.disable();
-                logger.debug("CSRF disabled");
-            })
+            .csrf(csrf -> csrf.disable())
+            .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/services/**").permitAll()
                 .requestMatchers("/api/reservations/**").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                .anyRequest().authenticated())
-            .exceptionHandling(exception -> exception
-                .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
-                .accessDeniedHandler((request, response, accessDeniedException) -> 
-                    response.sendError(HttpStatus.FORBIDDEN.value())))
+                .anyRequest().authenticated()
+            )
             .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .formLogin(form -> form
-                .loginProcessingUrl("/api/auth/login")
-                .successHandler((request, response, authentication) -> {
-                    response.setStatus(HttpStatus.OK.value());
-                    response.getWriter().write("{\"message\": \"Zalogowano pomyślnie\"}");
-                })
-                .failureHandler((request, response, exception) -> {
-                    response.setStatus(HttpStatus.UNAUTHORIZED.value());
-                    response.getWriter().write("{\"error\": \"Nieprawidłowe dane logowania\"}");
-                })
-            )
-            .logout(logout -> logout
-                .logoutUrl("/api/auth/logout")
-                .logoutSuccessHandler((request, response, authentication) -> {
-                    response.setStatus(HttpStatus.OK.value());
-                    response.getWriter().write("{\"message\": \"Wylogowano pomyślnie\"}");
-                })
-            )
-            .httpBasic(Customizer.withDefaults());
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-        logger.info("SecurityFilterChain configured successfully");
         return http.build();
     }
 
@@ -132,5 +94,10 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
+        return authConfig.getAuthenticationManager();
     }
 }
