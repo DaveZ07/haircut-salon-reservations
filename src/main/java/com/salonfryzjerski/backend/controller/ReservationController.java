@@ -1,6 +1,8 @@
 package com.salonfryzjerski.backend.controller;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,36 +46,61 @@ public class ReservationController {
         this.userService = userService;
     }
 
-    @Operation(summary = "Pobierz kalendarz rezerwacji", description = "Zwraca wszystkie rezerwacje pogrupowane według dat")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Pomyślnie pobrano kalendarz rezerwacji"),
-            @ApiResponse(responseCode = "401", description = "Brak autoryzacji")
-    })
-    @GetMapping("/calendar")
-    public Map<String, List<Map<String, String>>> getReservationsByDay() {
-        List<Reservation> reservations = reservationService.getAllReservations();
+@Operation(summary = "Pobierz kalendarz rezerwacji", description = "Zwraca wszystkie rezerwacje pogrupowane według dat")
+@ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Pomyślnie pobrano kalendarz rezerwacji"),
+        @ApiResponse(responseCode = "401", description = "Brak autoryzacji")
+})
+@GetMapping("/calendar")
+public Map<String, List<Map<String, Object>>> getReservationsByDay() {
+    List<Reservation> reservations = reservationService.getAllReservations();
 
-        Map<LocalDate, List<Reservation>> groupedReservations = reservations.stream()
-                .collect(Collectors.groupingBy(Reservation::getDate));
+    Map<LocalDate, List<Reservation>> groupedReservations = reservations.stream()
+            .collect(Collectors.groupingBy(Reservation::getDate));
 
-        Map<String, List<Map<String, String>>> calendarView = new TreeMap<>();
-        groupedReservations.forEach((date, dailyReservations) -> {
-            List<Map<String, String>> dailyView = dailyReservations.stream()
-                    .map(reservation -> {
-                        Map<String, String> map = new HashMap<>();
-                        map.put("startTime", reservation.getStartTime().toString());
-                        map.put("endTime", reservation.getEndTime().toString());
-                        map.put("serviceName", reservation.getService().getName());
-                        map.put("customerName", reservation.getCustomerName());
-                        return map;
-                    })
-                    .collect(Collectors.toList());
+    Map<String, List<Map<String, Object>>> calendarView = new TreeMap<>();
+    LocalDate today = LocalDate.now().withDayOfMonth(1);
+    LocalDate endDate = today.withDayOfMonth(today.lengthOfMonth());
 
-            calendarView.put(date.toString(), dailyView);
+    while (endDate.getMonthValue() < 12) {
+        endDate = endDate.plusMonths(1).withDayOfMonth(endDate.plusMonths(1).lengthOfMonth());
+    }
+
+    while (!today.isAfter(endDate)) {
+        List<Map<String, Object>> dailyView = new ArrayList<>();
+
+        LocalTime startTime = LocalTime.of(8, 0);
+        LocalTime endTime = LocalTime.of(16, 0);
+
+        while (!startTime.isAfter(endTime)) {
+            Map<String, Object> timeSlot = new HashMap<>();
+            timeSlot.put("startTime", startTime.toString());
+            timeSlot.put("endTime", startTime.plusMinutes(30).toString());
+            timeSlot.put("reserved", false);
+
+            dailyView.add(timeSlot);
+            startTime = startTime.plusMinutes(30);
+        }
+
+        List<Reservation> dailyReservations = groupedReservations.getOrDefault(today, new ArrayList<>());
+        dailyReservations.forEach(reservation -> {
+            dailyView.forEach(timeSlot -> {
+                LocalTime slotStartTime = LocalTime.parse((String) timeSlot.get("startTime"));
+                LocalTime slotEndTime = LocalTime.parse((String) timeSlot.get("endTime"));
+
+                if (!reservation.getStartTime().isAfter(slotEndTime) && !reservation.getEndTime().isBefore(slotStartTime)) {
+                    timeSlot.put("reserved", true);
+                    timeSlot.put("serviceName", reservation.getService().getName());
+                }
+            });
         });
 
-        return calendarView;
+        calendarView.put(today.toString(), dailyView);
+        today = today.plusDays(1);
     }
+
+    return calendarView;
+}
 
     @Operation(summary = "Pobierz wszystkie rezerwacje należące do użytkownika o podanym ID", description = "Zwraca listę wszystkich rezerwacji w systemie użytkownika o podanym emailu lub numerze telefonu")
     @ApiResponses(value = {
