@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
@@ -19,7 +20,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.salonfryzjerski.backend.model.Reservation;
+import com.salonfryzjerski.backend.model.User;
 import com.salonfryzjerski.backend.service.ReservationService;
+import com.salonfryzjerski.backend.service.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -34,15 +37,17 @@ public class ReservationController {
 
     private final ReservationService reservationService;
 
-    public ReservationController(ReservationService reservationService) {
+    private final UserService userService;
+
+    public ReservationController(ReservationService reservationService, UserService userService) {
         this.reservationService = reservationService;
+        this.userService = userService;
     }
 
-    @Operation(summary = "Pobierz kalendarz rezerwacji", 
-            description = "Zwraca wszystkie rezerwacje pogrupowane według dat")
+    @Operation(summary = "Pobierz kalendarz rezerwacji", description = "Zwraca wszystkie rezerwacje pogrupowane według dat")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Pomyślnie pobrano kalendarz rezerwacji"),
-        @ApiResponse(responseCode = "401", description = "Brak autoryzacji")
+            @ApiResponse(responseCode = "200", description = "Pomyślnie pobrano kalendarz rezerwacji"),
+            @ApiResponse(responseCode = "401", description = "Brak autoryzacji")
     })
     @GetMapping("/calendar")
     public Map<String, List<Map<String, String>>> getReservationsByDay() {
@@ -70,50 +75,60 @@ public class ReservationController {
         return calendarView;
     }
 
-    @Operation(summary = "Dodaj nową rezerwację", 
-            description = "Tworzy nową rezerwację w systemie")
+    @Operation(summary = "Pobierz wszystkie rezerwacje należące do użytkownika o podanym ID", description = "Zwraca listę wszystkich rezerwacji w systemie użytkownika o podanym emailu lub numerze telefonu")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "201", description = "Rezerwacja została utworzona"),
-        @ApiResponse(responseCode = "400", description = "Nieprawidłowe dane rezerwacji"),
-        @ApiResponse(responseCode = "401", description = "Brak autoryzacji")
+            @ApiResponse(responseCode = "200", description = "Pomyślnie pobrano rezerwacje"),
+            @ApiResponse(responseCode = "401", description = "Brak autoryzacji")
+    })
+    @GetMapping("/customer/{customerID}")
+    public List<Reservation> getReservationsByCustomer(
+            @Parameter(description = "ID użytkownika") @PathVariable String customerID) {
+        Optional<User> customerOptional = userService.getUserById(Long.valueOf(customerID));
+        if (customerOptional.isPresent()) {
+            User customer = customerOptional.get();
+            return reservationService.getReservationsByCustomer(customer.getEmail());
+        } else {
+            throw new IllegalArgumentException("User not found with ID: " + customerID);
+        }
+    }
+
+    @Operation(summary = "Dodaj nową rezerwację", description = "Tworzy nową rezerwację w systemie")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Rezerwacja została utworzona"),
+            @ApiResponse(responseCode = "400", description = "Nieprawidłowe dane rezerwacji"),
+            @ApiResponse(responseCode = "401", description = "Brak autoryzacji")
     })
     @PostMapping
     public ResponseEntity<Reservation> addReservation(
-            @Parameter(description = "Dane nowej rezerwacji") 
-            @RequestBody Reservation reservation) {
+            @Parameter(description = "Dane nowej rezerwacji") @RequestBody Reservation reservation) {
         Reservation savedReservation = reservationService.addReservation(reservation);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedReservation);
     }
 
-    @Operation(summary = "Aktualizuj rezerwację", 
-            description = "Aktualizuje istniejącą rezerwację na podstawie ID")
+    @Operation(summary = "Aktualizuj rezerwację", description = "Aktualizuje istniejącą rezerwację na podstawie ID")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Rezerwacja została zaktualizowana"),
-        @ApiResponse(responseCode = "400", description = "Nieprawidłowe dane rezerwacji"),
-        @ApiResponse(responseCode = "401", description = "Brak autoryzacji"),
-        @ApiResponse(responseCode = "404", description = "Nie znaleziono rezerwacji")
+            @ApiResponse(responseCode = "200", description = "Rezerwacja została zaktualizowana"),
+            @ApiResponse(responseCode = "400", description = "Nieprawidłowe dane rezerwacji"),
+            @ApiResponse(responseCode = "401", description = "Brak autoryzacji"),
+            @ApiResponse(responseCode = "404", description = "Nie znaleziono rezerwacji")
     })
     @PutMapping("/{id}")
     public ResponseEntity<Reservation> updateReservation(
-            @Parameter(description = "ID rezerwacji do aktualizacji") 
-            @PathVariable Long id,
-            @Parameter(description = "Zaktualizowane dane rezerwacji") 
-            @RequestBody Reservation updatedReservation) {
+            @Parameter(description = "ID rezerwacji do aktualizacji") @PathVariable Long id,
+            @Parameter(description = "Zaktualizowane dane rezerwacji") @RequestBody Reservation updatedReservation) {
         Reservation reservation = reservationService.updateReservation(id, updatedReservation);
         return ResponseEntity.ok(reservation);
     }
 
-    @Operation(summary = "Usuń rezerwację", 
-            description = "Usuwa rezerwację o podanym ID")
+    @Operation(summary = "Usuń rezerwację", description = "Usuwa rezerwację o podanym ID")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Rezerwacja została usunięta"),
-        @ApiResponse(responseCode = "401", description = "Brak autoryzacji"),
-        @ApiResponse(responseCode = "404", description = "Nie znaleziono rezerwacji")
+            @ApiResponse(responseCode = "200", description = "Rezerwacja została usunięta"),
+            @ApiResponse(responseCode = "401", description = "Brak autoryzacji"),
+            @ApiResponse(responseCode = "404", description = "Nie znaleziono rezerwacji")
     })
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteReservation(
-            @Parameter(description = "ID rezerwacji do usunięcia") 
-            @PathVariable Long id) {
+            @Parameter(description = "ID rezerwacji do usunięcia") @PathVariable Long id) {
         reservationService.deleteReservation(id);
         return ResponseEntity.ok().build();
     }

@@ -1,6 +1,8 @@
 package com.salonfryzjerski.backend.service;
 
-import org.springframework.security.core.userdetails.User;
+import java.util.Collections;
+
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -17,17 +19,21 @@ public class CustomUserDetailsService implements UserDetailsService {
     public CustomUserDetailsService(UserRepository userRepository) {
         this.userRepository = userRepository;
     }
+    
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         com.salonfryzjerski.backend.model.User userEntity = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User nie znaleziony"));
 
-        return User.builder()
-                .username(userEntity.getUsername())
-                .password(userEntity.getPassword())
-                .roles(userEntity.getRole().name().replace("ROLE_", ""))
-                .build();
+        return new CustomUserDetails(
+                userEntity.getId(),
+                userEntity.getUsername(),
+                userEntity.getPassword(),
+                Collections.singletonList(
+                    new SimpleGrantedAuthority(userEntity.getRole().name().replace("ROLE_", ""))
+                )
+        );
     }
 
     public void saveUser(com.salonfryzjerski.backend.model.User userEntity) {
@@ -36,3 +42,4 @@ public class CustomUserDetailsService implements UserDetailsService {
         userRepository.save(userEntity);
     }
 }
+

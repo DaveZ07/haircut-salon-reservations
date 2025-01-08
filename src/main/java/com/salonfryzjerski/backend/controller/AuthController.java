@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,6 +22,7 @@ import com.salonfryzjerski.backend.dto.MessageResponse;
 import com.salonfryzjerski.backend.dto.RegisterRequest;
 import com.salonfryzjerski.backend.model.User;
 import com.salonfryzjerski.backend.security.JwtUtil;
+import com.salonfryzjerski.backend.service.CustomUserDetails;
 import com.salonfryzjerski.backend.service.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,18 +55,28 @@ public class AuthController {
                                         new UsernamePasswordAuthenticationToken(request.getUsername(),
                                                         request.getPassword()));
 
+                        CustomUserDetails cud = (CustomUserDetails) authentication.getPrincipal();
+                        Long userId = cud.getId();
                         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
                         String token = jwtUtil.generateToken(userDetails);
-
                         return ResponseEntity.ok(LoginResponse.builder()
                                         .token(token)
+                                        .username(userDetails.getUsername())
+                                        .role(userDetails.getAuthorities().stream().findFirst().get().getAuthority())
+                                        .userId(userId)
                                         .message("Zalogowano pomyślnie")
                                         .build());
-                } catch (Exception e) {
+                } catch (AuthenticationException e) {
                         logger.error("Błąd podczas logowania: ", e);
                         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(LoginResponse.builder()
                                         .token(null)
                                         .message("Nieprawidłowe dane logowania")
+                                        .build());
+                } catch (Exception e) {
+                        logger.error("Nieoczekiwany błąd: ", e);
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(LoginResponse.builder()
+                                        .token(null)
+                                        .message("Wystąpił nieoczekiwany błąd")
                                         .build());
                 }
         }

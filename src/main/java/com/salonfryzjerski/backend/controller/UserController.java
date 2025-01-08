@@ -30,7 +30,7 @@ public class UserController {
 
     @Autowired
     private UserService userService;
-
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     @Operation(summary = "Pobranie wszystkich użytkowników")
     @ApiResponses(value = {
@@ -39,7 +39,7 @@ public class UserController {
     public List<User> getAllUsers() {
         return userService.getAllUsers();
     }
-
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/{id}")
     @Operation(summary = "Pobranie użytkownika po ID")
     @ApiResponses(value = {
@@ -65,7 +65,7 @@ public class UserController {
         User savedUser = userService.createUser(user);
         return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
     }
-
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{id}")
     @Operation(summary = "Aktualizacja użytkownika")
     @ApiResponses(value = {
@@ -82,7 +82,7 @@ public class UserController {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
-
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     @Operation(summary = "Usunięcie użytkownika")
     @ApiResponses(value = {

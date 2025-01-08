@@ -19,6 +19,9 @@ public class ReservationService {
     public List<Reservation> getAllReservations() {
         return reservationRepository.findAll();
     }
+    public List<Reservation> getReservationsByCustomer(String customerEmail) {
+        return reservationRepository.findByCustomerEmail(customerEmail);
+    }
 
     public Reservation addReservation(Reservation reservation) {
         List<Reservation> existingReservations = reservationRepository.findAll();
@@ -33,7 +36,7 @@ public class ReservationService {
                                 (reservation.getStartTime().equals(existing.getStartTime()))));
 
         if (isTimeSlotTaken) {
-            throw new RuntimeException("The selected time slot is already booked!");
+            throw new RuntimeException("Wybrana godzina jest już zajęta");
         }
         return reservationRepository.save(reservation);
     }
@@ -46,12 +49,12 @@ public class ReservationService {
             existingReservation.setCustomerName(updatedReservation.getCustomerName());
             existingReservation.setService(updatedReservation.getService());
             return reservationRepository.save(existingReservation);
-        }).orElseThrow(() -> new RuntimeException("Reservation with ID " + id + " not found"));
+        }).orElseThrow(() -> new RuntimeException("Rezerwacja o ID " + id + " nie istnieje"));
     }
 
     public void deleteReservation(Long id) {
         if (!reservationRepository.existsById(id)) {
-            throw new RuntimeException("Reservation with ID " + id + " not found");
+            throw new RuntimeException("Rezerwacja o ID " + id + " nie istnieje");
         }
         reservationRepository.deleteById(id);
     }

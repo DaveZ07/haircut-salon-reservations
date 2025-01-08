@@ -25,6 +25,8 @@ public class Reservation {
 
     private String customerName;
 
+    private String customerEmail;
+
     @ManyToOne
     @JoinColumn(name = "service_id", nullable = false)
     private SalonService service;
@@ -75,5 +77,13 @@ public class Reservation {
 
     public void setService(SalonService service) {
         this.service = service;
+    }
+
+    public String getCustomerEmail() {
+        return customerEmail;
+    }
+
+    public void setCustomerEmail(String customerEmail) {
+        this.customerEmail = customerEmail;
     }
 }

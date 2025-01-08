@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -45,6 +46,7 @@ public class ServiceController {
             @ApiResponse(responseCode = "201", description = "Pomyślne dodanie usługi"),
             @ApiResponse(responseCode = "400", description = "Nieprawidłowe dane usługi")
     })
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SalonService> createService(@RequestBody SalonService service) {
         SalonService savedService = serviceRepository.save(service);
         return new ResponseEntity<>(savedService, HttpStatus.CREATED);
@@ -56,6 +58,7 @@ public class ServiceController {
             @ApiResponse(responseCode = "200", description = "Pomyślne zaktualizowanie usługi"),
             @ApiResponse(responseCode = "404", description = "Usługa nie znaleziona")
     })
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SalonService> updateService(@PathVariable Long id, @RequestBody SalonService serviceDetails) {
         return serviceRepository.findById(id).map(service -> {
             service.setName(serviceDetails.getName());
@@ -72,6 +75,7 @@ public class ServiceController {
             @ApiResponse(responseCode = "204", description = "Pomyślne usunięcie usługi"),
             @ApiResponse(responseCode = "404", description = "Usługa nie znaleziona")
     })
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteService(@PathVariable Long id) {
         return serviceRepository.findById(id).map(service -> {
             serviceRepository.delete(service);
