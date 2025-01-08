@@ -1,5 +1,7 @@
 package com.salonfryzjerski.backend.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -34,100 +36,109 @@ import lombok.RequiredArgsConstructor;
 @Tag(name = "Autoryzacja", description = "API do zarządzania autoryzacją użytkowników")
 @RequiredArgsConstructor
 public class AuthController {
-    private final AuthenticationManager authenticationManager;
-    private final JwtUtil jwtUtil;
+        private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+        private final AuthenticationManager authenticationManager;
+        private final JwtUtil jwtUtil;
+        private final PasswordEncoder passwordEncoder;
 
-    @PostMapping("/login")
-    @Operation(summary = "Logowanie użytkownika")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Pomyślne zalogowanie"),
-            @ApiResponse(responseCode = "401", description = "Nieprawidłowe dane logowania")
-    })
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getUsername(), request.getPassword()));
+        @PostMapping("/login")
+        @Operation(summary = "Logowanie użytkownika")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Pomyślne zalogowanie"),
+                        @ApiResponse(responseCode = "401", description = "Nieprawidłowe dane logowania")
+        })
+        public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
+                try {
+                        Authentication authentication = authenticationManager.authenticate(
+                                        new UsernamePasswordAuthenticationToken(request.getUsername(),
+                                                        request.getPassword()));
 
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        String token = jwtUtil.generateToken(userDetails);
+                        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+                        String token = jwtUtil.generateToken(userDetails);
 
-        return ResponseEntity.ok(LoginResponse.builder()
-                .token(token)
-                .message("Zalogowano pomyślnie")
-                .build());
-    }
-
-    @PostMapping("/logout")
-    @Operation(summary = "Wylogowanie użytkownika")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Successful logout"),
-            @ApiResponse(responseCode = "400", description = "Invalid token"),
-            @ApiResponse(responseCode = "401", description = "Missing authorization token")
-    })
-    public ResponseEntity<?> logout(HttpServletRequest request) {
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return ResponseEntity
-                    .status(HttpStatus.UNAUTHORIZED)
-                    .body(LoginResponse.builder()
-                            .message("Brak prawidłowego tokena autoryzacji")
-                            .build());
-        }
-        try {
-            String jwt = authHeader.substring(7);
-            if (!jwtUtil.validateToken(jwt)) {
-                return ResponseEntity
-                        .status(HttpStatus.BAD_REQUEST)
-                        .body(LoginResponse.builder()
-                                .message("Nieprawidłowy token")
-                                .build());
-            }
-            return ResponseEntity.ok(LoginResponse.builder()
-                    .message("Wylogowano pomyślnie")
-                    .build());
-        } catch (Exception e) {
-            return ResponseEntity
-                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(LoginResponse.builder()
-                            .message("Błąd podczas wylogowywania: " + e.getMessage())
-                            .build());
-        }
-    }
-
-    @Autowired
-    private UserService userService;
-    @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @PostMapping("/register")
-    @Operation(summary = "Rejestracja użytkownika")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Pomyślna rejestracja"),
-            @ApiResponse(responseCode = "400", description = "Użytkownik już istnieje")
-    })
-    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
-        if (userService.existsByUsername(request.getUsername())) {
-            return ResponseEntity
-                    .badRequest()
-                    .body(new MessageResponse("Użytkownik o podanej nazwie już istnieje"));
+                        return ResponseEntity.ok(LoginResponse.builder()
+                                        .token(token)
+                                        .message("Zalogowano pomyślnie")
+                                        .build());
+                } catch (Exception e) {
+                        logger.error("Błąd podczas logowania: ", e);
+                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(LoginResponse.builder()
+                                        .token(null)
+                                        .message("Nieprawidłowe dane logowania")
+                                        .build());
+                }
         }
 
-        if (userService.existsByEmail(request.getEmail())) {
-            return ResponseEntity
-                    .badRequest()
-                    .body(new MessageResponse("Email jest już zajęty"));
+        @PostMapping("/logout")
+        @Operation(summary = "Wylogowanie użytkownika")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Successful logout"),
+                        @ApiResponse(responseCode = "400", description = "Invalid token"),
+                        @ApiResponse(responseCode = "401", description = "Missing authorization token")
+        })
+        public ResponseEntity<?> logout(HttpServletRequest request) {
+                String authHeader = request.getHeader("Authorization");
+                if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                        return ResponseEntity
+                                        .status(HttpStatus.UNAUTHORIZED)
+                                        .body(LoginResponse.builder()
+                                                        .message("Brak prawidłowego tokena autoryzacji")
+                                                        .build());
+                }
+                try {
+                        String jwt = authHeader.substring(7);
+                        if (!jwtUtil.validateToken(jwt)) {
+                                return ResponseEntity
+                                                .status(HttpStatus.BAD_REQUEST)
+                                                .body(LoginResponse.builder()
+                                                                .message("Nieprawidłowy token")
+                                                                .build());
+                        }
+                        return ResponseEntity.ok(LoginResponse.builder()
+                                        .message("Wylogowano pomyślnie")
+                                        .build());
+                } catch (Exception e) {
+                        return ResponseEntity
+                                        .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                                        .body(LoginResponse.builder()
+                                                        .message("Błąd podczas wylogowywania: " + e.getMessage())
+                                                        .build());
+                }
         }
 
-        User user = User.builder()
-                .username(request.getUsername())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .email(request.getEmail())
-                .phoneNumber(request.getPhoneNumber())
-                .role(User.Role.ROLE_USER)
-                .build();
+        @Autowired
+        private UserService userService;
 
-        userService.createUser(user);
+        @PostMapping("/register")
+        @Operation(summary = "Rejestracja użytkownika")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Pomyślna rejestracja"),
+                        @ApiResponse(responseCode = "400", description = "Użytkownik już istnieje")
+        })
+        public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
+                if (userService.existsByUsername(request.getUsername())) {
+                        return ResponseEntity
+                                        .badRequest()
+                                        .body(new MessageResponse("Użytkownik o podanej nazwie już istnieje"));
+                }
 
-        return ResponseEntity.ok(new MessageResponse("Użytkownik został zarejestrowany pomyślnie"));
-    }
+                if (userService.existsByEmail(request.getEmail())) {
+                        return ResponseEntity
+                                        .badRequest()
+                                        .body(new MessageResponse("Email jest już zajęty"));
+                }
+
+                User user = User.builder()
+                                .username(request.getUsername())
+                                .password(passwordEncoder.encode(request.getPassword()))
+                                .email(request.getEmail())
+                                .phoneNumber(request.getPhoneNumber())
+                                .role(User.Role.ROLE_USER)
+                                .build();
+
+                userService.createUser(user);
+
+                return ResponseEntity.ok(new MessageResponse("Użytkownik został zarejestrowany pomyślnie"));
+        }
 
 }
