@@ -26,7 +26,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         return User.builder()
                 .username(userEntity.getUsername())
                 .password(userEntity.getPassword())
-                .roles(userEntity.getRole().name().replace("ROLE_", "")) // Usuń prefiks "ROLE_"
+                .roles(userEntity.getRole().name().replace("ROLE_", ""))
                 .build();
     }
 
