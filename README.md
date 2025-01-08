@@ -43,7 +43,7 @@ This project is a backend application for managing reservations and services in 
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/yourusername/haircut-salon-reservations.git
+    git clone https://github.com/DaveZ07/haircut-salon-reservations.git
     cd haircut-salon-reservations
     ```
 
