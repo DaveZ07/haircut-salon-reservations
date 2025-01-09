@@ -33,9 +33,12 @@ application-dev.properties
 /nbdist/
 /.nb-gradle/
 build/
-logs/
 !**/src/main/**/build/
 !**/src/test/**/build/
+
+### logs folder ###
+logs/
+.log
 
 ### VS Code ###
 .vscode/
