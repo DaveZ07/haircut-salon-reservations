@@ -10,6 +10,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -24,13 +25,9 @@ import com.salonfryzjerski.backend.filter.JwtAuthenticationFilter;
 import com.salonfryzjerski.backend.security.JwtUtil;
 
 @Configuration
+@EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
-
-    @Bean
-    public JwtAuthenticationFilter jwtAuthenticationFilter() {
-        return new JwtAuthenticationFilter(jwtUtil, userDetailsService);
-    }
 
     private static final Logger logger = LogManager.getLogger(SecurityConfig.class);
     private final JwtUtil jwtUtil;
@@ -41,6 +38,11 @@ public class SecurityConfig {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
         logger.info("SecurityConfig initialized");
+    }
+
+    @Bean
+    public JwtAuthenticationFilter jwtAuthenticationFilter() {
+        return new JwtAuthenticationFilter(jwtUtil, userDetailsService);
     }
 
     @Bean
@@ -59,7 +61,6 @@ public class SecurityConfig {
             )
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-
         return http.build();
     }
 
@@ -79,12 +80,6 @@ public class SecurityConfig {
             "Access-Control-Request-Method", 
             "Access-Control-Request-Headers",
             "Access-Control-Allow-Credentials"
-        ));
-        configuration.setExposedHeaders(Arrays.asList(
-            "Authorization",
-            "Access-Control-Allow-Origin", 
-            "Access-Control-Allow-Credentials",
-            "Access-Control-Allow-Headers"
         ));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);

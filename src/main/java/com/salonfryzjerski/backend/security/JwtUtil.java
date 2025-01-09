@@ -2,11 +2,13 @@ package com.salonfryzjerski.backend.security;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -26,12 +28,17 @@ public class JwtUtil {
     
     @PostConstruct
     public void init() {
-        this.key = Keys.secretKeyFor(SignatureAlgorithm.HS512);
+        this.key = Keys.hmacShaKeyFor(secret.getBytes());
     }
 
     public String generateToken(UserDetails userDetails) {
+        Claims claims = Jwts.claims().setSubject(userDetails.getUsername());
+        claims.put("authorities", userDetails.getAuthorities().stream()
+                .map(authority -> "ROLE_" + authority.getAuthority())
+                .collect(Collectors.toList()));
+
         return Jwts.builder()
-                .setSubject(userDetails.getUsername())
+                .setClaims(claims)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(key, SignatureAlgorithm.HS512)
@@ -59,7 +66,7 @@ public class JwtUtil {
                 .getSubject();
     }
 
-    public void invalidateToken(String token) {
-        
+    public Key getKey() {
+        return key;
     }
 }

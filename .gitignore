@@ -38,9 +38,10 @@ build/
 
 ### logs folder ###
 logs/
-.log
-
+*.log
+logs/app.log
 ### VS Code ###
 .vscode/
 
 .fake
+
