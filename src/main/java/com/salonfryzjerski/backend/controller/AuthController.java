@@ -51,6 +51,7 @@ public class AuthController {
         })
         public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
                 try {
+                        logger.debug("Próba logowania użytkownika: {}", request.getUsername());
                         Authentication authentication = authenticationManager.authenticate(
                                         new UsernamePasswordAuthenticationToken(request.getUsername(),
                                                         request.getPassword()));

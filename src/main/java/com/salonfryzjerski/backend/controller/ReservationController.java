@@ -10,6 +10,9 @@ import java.util.Optional;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,10 +37,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/reservations")
-@Tag(name = "Rezerwacje", description = "Zarządzanie rezerwacjami w systemie")
+@Tag(name = "Rezerwacje", description = "API do zarządzania rezerwacjami")
 public class ReservationController {
+    private static final Logger logger = LoggerFactory.getLogger(ReservationController.class);
 
-    private final ReservationService reservationService;
+    @Autowired
+    private ReservationService reservationService;
 
     private final UserService userService;
 
@@ -46,61 +51,61 @@ public class ReservationController {
         this.userService = userService;
     }
 
-@Operation(summary = "Pobierz kalendarz rezerwacji", description = "Zwraca wszystkie rezerwacje pogrupowane według dat")
-@ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Pomyślnie pobrano kalendarz rezerwacji"),
-        @ApiResponse(responseCode = "401", description = "Brak autoryzacji")
-})
-@GetMapping("/calendar")
-public Map<String, List<Map<String, Object>>> getReservationsByDay() {
-    List<Reservation> reservations = reservationService.getAllReservations();
+    @Operation(summary = "Pobierz kalendarz rezerwacji", description = "Zwraca wszystkie rezerwacje pogrupowane według dat")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Pomyślnie pobrano kalendarz rezerwacji"),
+            @ApiResponse(responseCode = "401", description = "Brak autoryzacji")
+    })
+    @GetMapping("/calendar")
+    public Map<String, List<Map<String, Object>>> getReservationsByDay() {
+        List<Reservation> reservations = reservationService.getAllReservations();
 
-    Map<LocalDate, List<Reservation>> groupedReservations = reservations.stream()
-            .collect(Collectors.groupingBy(Reservation::getDate));
+        Map<LocalDate, List<Reservation>> groupedReservations = reservations.stream()
+                .collect(Collectors.groupingBy(Reservation::getDate));
 
-    Map<String, List<Map<String, Object>>> calendarView = new TreeMap<>();
-    LocalDate today = LocalDate.now().withDayOfMonth(1);
-    LocalDate endDate = today.withDayOfMonth(today.lengthOfMonth());
+        Map<String, List<Map<String, Object>>> calendarView = new TreeMap<>();
+        LocalDate today = LocalDate.now().withDayOfMonth(1);
+        LocalDate endDate = today.withDayOfMonth(today.lengthOfMonth());
 
-    while (endDate.getMonthValue() < 12) {
-        endDate = endDate.plusMonths(1).withDayOfMonth(endDate.plusMonths(1).lengthOfMonth());
-    }
-
-    while (!today.isAfter(endDate)) {
-        List<Map<String, Object>> dailyView = new ArrayList<>();
-
-        LocalTime startTime = LocalTime.of(8, 0);
-        LocalTime endTime = LocalTime.of(16, 0);
-
-        while (!startTime.isAfter(endTime)) {
-            Map<String, Object> timeSlot = new HashMap<>();
-            timeSlot.put("startTime", startTime.toString());
-            timeSlot.put("endTime", startTime.plusMinutes(30).toString());
-            timeSlot.put("reserved", false);
-
-            dailyView.add(timeSlot);
-            startTime = startTime.plusMinutes(30);
+        while (endDate.getMonthValue() < 12) {
+            endDate = endDate.plusMonths(1).withDayOfMonth(endDate.plusMonths(1).lengthOfMonth());
         }
 
-        List<Reservation> dailyReservations = groupedReservations.getOrDefault(today, new ArrayList<>());
-        dailyReservations.forEach(reservation -> {
-            dailyView.forEach(timeSlot -> {
-                LocalTime slotStartTime = LocalTime.parse((String) timeSlot.get("startTime"));
-                LocalTime slotEndTime = LocalTime.parse((String) timeSlot.get("endTime"));
+        while (!today.isAfter(endDate)) {
+            List<Map<String, Object>> dailyView = new ArrayList<>();
 
-                if (!reservation.getStartTime().isAfter(slotEndTime) && !reservation.getEndTime().isBefore(slotStartTime)) {
-                    timeSlot.put("reserved", true);
-                    timeSlot.put("serviceName", reservation.getService().getName());
-                }
+            LocalTime startTime = LocalTime.of(8, 0);
+            LocalTime endTime = LocalTime.of(16, 0);
+
+            while (!startTime.isAfter(endTime)) {
+                Map<String, Object> timeSlot = new HashMap<>();
+                timeSlot.put("startTime", startTime.toString());
+                timeSlot.put("endTime", startTime.plusMinutes(30).toString());
+                timeSlot.put("reserved", false);
+
+                dailyView.add(timeSlot);
+                startTime = startTime.plusMinutes(30);
+            }
+
+            List<Reservation> dailyReservations = groupedReservations.getOrDefault(today, new ArrayList<>());
+            dailyReservations.forEach(reservation -> {
+                dailyView.forEach(timeSlot -> {
+                    LocalTime slotStartTime = LocalTime.parse((String) timeSlot.get("startTime"));
+                    LocalTime slotEndTime = LocalTime.parse((String) timeSlot.get("endTime"));
+
+                    if (!reservation.getStartTime().isAfter(slotEndTime) && !reservation.getEndTime().isBefore(slotStartTime)) {
+                        timeSlot.put("reserved", true);
+                        timeSlot.put("serviceName", reservation.getService().getName());
+                    }
+                });
             });
-        });
 
-        calendarView.put(today.toString(), dailyView);
-        today = today.plusDays(1);
+            calendarView.put(today.toString(), dailyView);
+            today = today.plusDays(1);
+        }
+
+        return calendarView;
     }
-
-    return calendarView;
-}
 
     @Operation(summary = "Pobierz wszystkie rezerwacje należące do użytkownika o podanym ID", description = "Zwraca listę wszystkich rezerwacji w systemie użytkownika o podanym emailu lub numerze telefonu")
     @ApiResponses(value = {
@@ -119,7 +124,7 @@ public Map<String, List<Map<String, Object>>> getReservationsByDay() {
         }
     }
 
-    @Operation(summary = "Dodaj nową rezerwację", description = "Tworzy nową rezerwację w systemie")
+    @Operation(summary = "Dodaj nową rezerwację", description = "Dodaje nową rezerwację")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Rezerwacja została utworzona"),
             @ApiResponse(responseCode = "400", description = "Nieprawidłowe dane rezerwacji"),
@@ -128,7 +133,9 @@ public Map<String, List<Map<String, Object>>> getReservationsByDay() {
     @PostMapping
     public ResponseEntity<Reservation> addReservation(
             @Parameter(description = "Dane nowej rezerwacji") @RequestBody Reservation reservation) {
+        logger.debug("Dodawanie nowej rezerwacji: {}", reservation);
         Reservation savedReservation = reservationService.addReservation(reservation);
+        logger.info("Rezerwacja została utworzona: {}", savedReservation);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedReservation);
     }
 
@@ -143,7 +150,9 @@ public Map<String, List<Map<String, Object>>> getReservationsByDay() {
     public ResponseEntity<Reservation> updateReservation(
             @Parameter(description = "ID rezerwacji do aktualizacji") @PathVariable Long id,
             @Parameter(description = "Zaktualizowane dane rezerwacji") @RequestBody Reservation updatedReservation) {
+        logger.debug("Aktualizacja rezerwacji o ID: {}", id);
         Reservation reservation = reservationService.updateReservation(id, updatedReservation);
+        logger.info("Rezerwacja została zaktualizowana: {}", reservation);
         return ResponseEntity.ok(reservation);
     }
 
@@ -156,7 +165,9 @@ public Map<String, List<Map<String, Object>>> getReservationsByDay() {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteReservation(
             @Parameter(description = "ID rezerwacji do usunięcia") @PathVariable Long id) {
+        logger.debug("Usuwanie rezerwacji o ID: {}", id);
         reservationService.deleteReservation(id);
+        logger.info("Rezerwacja została usunięta o ID: {}", id);
         return ResponseEntity.ok().build();
     }
 }
