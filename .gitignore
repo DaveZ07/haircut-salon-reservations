@@ -33,6 +33,7 @@ application-dev.properties
 /nbdist/
 /.nb-gradle/
 build/
+logs/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
