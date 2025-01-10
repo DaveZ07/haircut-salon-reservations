@@ -93,7 +93,8 @@ public class ReservationController {
                 LocalTime slotStartTime = LocalTime.parse((String) timeSlot.get("startTime"));
                 LocalTime slotEndTime = LocalTime.parse((String) timeSlot.get("endTime"));
 
-                if (!reservation.getStartTime().isAfter(slotEndTime) && !reservation.getEndTime().isBefore(slotStartTime)) {
+                if (!reservation.getStartTime().isAfter(slotEndTime)
+                            && !reservation.getEndTime().isBefore(slotStartTime)) {
                 timeSlot.put("reserved", true);
                 timeSlot.put("serviceName", reservation.getService().getName());
                 timeSlot.put("reservationId", reservation.getId());
@@ -134,6 +135,9 @@ public class ReservationController {
     @PostMapping
     public ResponseEntity<Reservation> addReservation(
             @Parameter(description = "Dane nowej rezerwacji") @RequestBody Reservation reservation) {
+        if (reservation.getDate().isBefore(LocalDate.now())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        }
         logger.debug("Dodawanie nowej rezerwacji: {}", reservation);
         Reservation savedReservation = reservationService.addReservation(reservation);
         logger.info("Rezerwacja została utworzona: {}", savedReservation);
@@ -151,6 +155,9 @@ public class ReservationController {
     public ResponseEntity<Reservation> updateReservation(
             @Parameter(description = "ID rezerwacji do aktualizacji") @PathVariable Long id,
             @Parameter(description = "Zaktualizowane dane rezerwacji") @RequestBody Reservation updatedReservation) {
+        if (updatedReservation.getDate().isBefore(LocalDate.now())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        }
         logger.debug("Aktualizacja rezerwacji o ID: {}", id);
         Reservation reservation = reservationService.updateReservation(id, updatedReservation);
         logger.info("Rezerwacja została zaktualizowana: {}", reservation);
