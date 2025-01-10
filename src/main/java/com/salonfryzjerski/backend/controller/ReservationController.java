@@ -49,19 +49,19 @@ public class ReservationController {
     public ReservationController(ReservationService reservationService, UserService userService) {
         this.reservationService = reservationService;
         this.userService = userService;
-    }
+        }
 
-    @Operation(summary = "Pobierz kalendarz rezerwacji", description = "Zwraca wszystkie rezerwacje pogrupowane według dat")
-    @ApiResponses(value = {
+        @Operation(summary = "Pobierz kalendarz rezerwacji", description = "Zwraca wszystkie rezerwacje pogrupowane według dat")
+        @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Pomyślnie pobrano kalendarz rezerwacji"),
             @ApiResponse(responseCode = "401", description = "Brak autoryzacji")
-    })
-    @GetMapping("/calendar")
-    public Map<String, List<Map<String, Object>>> getReservationsByDay() {
+        })
+        @GetMapping("/calendar")
+        public Map<String, List<Map<String, Object>>> getReservationsByDay() {
         List<Reservation> reservations = reservationService.getAllReservations();
 
         Map<LocalDate, List<Reservation>> groupedReservations = reservations.stream()
-                .collect(Collectors.groupingBy(Reservation::getDate));
+            .collect(Collectors.groupingBy(Reservation::getDate));
 
         Map<String, List<Map<String, Object>>> calendarView = new TreeMap<>();
         LocalDate today = LocalDate.now().withDayOfMonth(1);
@@ -78,26 +78,27 @@ public class ReservationController {
             LocalTime endTime = LocalTime.of(16, 0);
 
             while (!startTime.isAfter(endTime)) {
-                Map<String, Object> timeSlot = new HashMap<>();
-                timeSlot.put("startTime", startTime.toString());
-                timeSlot.put("endTime", startTime.plusMinutes(30).toString());
-                timeSlot.put("reserved", false);
+            Map<String, Object> timeSlot = new HashMap<>();
+            timeSlot.put("startTime", startTime.toString());
+            timeSlot.put("endTime", startTime.plusMinutes(30).toString());
+            timeSlot.put("reserved", false);
 
-                dailyView.add(timeSlot);
-                startTime = startTime.plusMinutes(30);
+            dailyView.add(timeSlot);
+            startTime = startTime.plusMinutes(30);
             }
 
             List<Reservation> dailyReservations = groupedReservations.getOrDefault(today, new ArrayList<>());
             dailyReservations.forEach(reservation -> {
-                dailyView.forEach(timeSlot -> {
-                    LocalTime slotStartTime = LocalTime.parse((String) timeSlot.get("startTime"));
-                    LocalTime slotEndTime = LocalTime.parse((String) timeSlot.get("endTime"));
+            dailyView.forEach(timeSlot -> {
+                LocalTime slotStartTime = LocalTime.parse((String) timeSlot.get("startTime"));
+                LocalTime slotEndTime = LocalTime.parse((String) timeSlot.get("endTime"));
 
-                    if (!reservation.getStartTime().isAfter(slotEndTime) && !reservation.getEndTime().isBefore(slotStartTime)) {
-                        timeSlot.put("reserved", true);
-                        timeSlot.put("serviceName", reservation.getService().getName());
-                    }
-                });
+                if (!reservation.getStartTime().isAfter(slotEndTime) && !reservation.getEndTime().isBefore(slotStartTime)) {
+                timeSlot.put("reserved", true);
+                timeSlot.put("serviceName", reservation.getService().getName());
+                timeSlot.put("reservationId", reservation.getId());
+                }
+            });
             });
 
             calendarView.put(today.toString(), dailyView);
@@ -105,15 +106,15 @@ public class ReservationController {
         }
 
         return calendarView;
-    }
+        }
 
-    @Operation(summary = "Pobierz wszystkie rezerwacje należące do użytkownika o podanym ID", description = "Zwraca listę wszystkich rezerwacji w systemie użytkownika o podanym emailu lub numerze telefonu")
-    @ApiResponses(value = {
+        @Operation(summary = "Pobierz wszystkie rezerwacje należące do użytkownika o podanym ID", description = "Zwraca listę wszystkich rezerwacji w systemie użytkownika o podanym emailu lub numerze telefonu")
+        @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Pomyślnie pobrano rezerwacje"),
             @ApiResponse(responseCode = "401", description = "Brak autoryzacji")
-    })
-    @GetMapping("/customer/{customerID}")
-    public List<Reservation> getReservationsByCustomer(
+        })
+        @GetMapping("/customer/{customerID}")
+        public List<Reservation> getReservationsByCustomer(
             @Parameter(description = "ID użytkownika") @PathVariable String customerID) {
         Optional<User> customerOptional = userService.getUserById(Long.valueOf(customerID));
         if (customerOptional.isPresent()) {

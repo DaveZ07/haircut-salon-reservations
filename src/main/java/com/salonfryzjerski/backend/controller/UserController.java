@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,6 +31,10 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+    
+    @Autowired
+    private BCryptPasswordEncoder bCryptPasswordEncoder;
+    
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     @Operation(summary = "Pobranie wszystkich użytkowników")
@@ -62,6 +67,7 @@ public class UserController {
     })
     public ResponseEntity<User> createUser(
             @RequestBody User user) {
+        user.setPassword(bCryptPasswordEncoder.encode(user.getPassword()));
         User savedUser = userService.createUser(user);
         return new ResponseEntity<>(savedUser, HttpStatus.CREATED);
     }
@@ -76,6 +82,7 @@ public class UserController {
             @PathVariable Long id,
             @RequestBody User userDetails) {
         try {
+            userDetails.setPassword(bCryptPasswordEncoder.encode(userDetails.getPassword()));
             User updatedUser = userService.updateUser(id, userDetails);
             return new ResponseEntity<>(updatedUser, HttpStatus.OK);
         } catch (RuntimeException e) {
